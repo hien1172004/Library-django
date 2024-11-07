@@ -16,7 +16,7 @@ class CustomPageNumberPagination(PageNumberPagination):
     page_size_query_param = 'page_size'  # Cho phép người dùng thay đổi số lượng sách mỗi trang qua tham số page_size
     max_page_size = 10  # Giới hạn số sách tối đa mỗi trang
 # --BOOK---
-class AddBookView(generics.CreateAPIView):
+class AddBookView(generics.CreateAPIView):#checked
     queryset = Book.objects.all()
     serializer_class = BookSerializer
     permission_classes = [IsAuthenticated]
@@ -34,13 +34,13 @@ class AddBookView(generics.CreateAPIView):
             'message': 'Failed to add book',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
-class EditBookView(generics.UpdateAPIView):
+class EditBookView(generics.UpdateAPIView):#checked
     queryset = Book.objects.all()
     serializer_class = BookSerializer
     permission_classes = [IsAuthenticated]
     def get_object(self):
-        book_id = self.request.data.get('book_id')
-        return get_object_or_404(Book, id=book_id)
+        # Sử dụng pk từ URL thay vì từ request.data
+        return get_object_or_404(Book, id=self.kwargs['pk'])
 
     def update(self, request, *args, **kwargs):
         book = self.get_object()
@@ -57,10 +57,10 @@ class EditBookView(generics.UpdateAPIView):
             'message': 'Failed to update book',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
-class SearchBooksView(generics.ListAPIView):
+class SearchBooksView(generics.ListAPIView):#checked
     serializer_class = BookSerializer
     pagination_class = PageNumberPagination
-
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
         # Lấy các tham số từ query params (tham số trong URL)
         title = self.request.query_params.get("title", "")
@@ -78,12 +78,19 @@ class SearchBooksView(generics.ListAPIView):
             queryset = queryset.filter(category__icontains=category)  # Tìm theo thể loại sách
 
         return queryset
-class DeleteBookView(generics.DestroyAPIView):
+class DeleteBookView(generics.DestroyAPIView):#checked
     queryset = Book.objects.all()
     permission_classes = [IsAuthenticated]
     
     def get_object(self):
-        return get_object_or_404(Book, id=self.kwargs['pk'])
+        # Lấy book_id từ tham số truy vấn
+        book_id = self.request.query_params.get('id')
+        # Kiểm tra nếu book_id không có trong query params
+        if not book_id:
+            raise ValidationError('Book id is required.')
+        
+        # Tìm kiếm sách theo book_id
+        return get_object_or_404(Book, id=book_id)
 
     def delete(self, request, *args, **kwargs):
         book = self.get_object()
@@ -99,7 +106,7 @@ class DeleteBookView(generics.DestroyAPIView):
         }, status=status.HTTP_200_OK)
 
 #--------Manager----------
-class LoginView(APIView):
+class LoginView(APIView):#checked
     permission_classes = [AllowAny]  # Cho phép tất cả người dùng gọi API này
     def post(self, request, *args, **kwargs):
         username = request.data.get('username')
@@ -117,7 +124,7 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)  # Trả về mã trạng thái 200 (thành công)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
-class ChangePasswordView(APIView):
+class ChangePasswordView(APIView):#checked
     permission_classes = [IsAuthenticated]  # Chỉ người dùng đã đăng nhập mới có quyền thay đổi mật khẩu
 
     def post(self, request, *args, **kwargs):
@@ -277,12 +284,6 @@ class BookTransactionAddView(generics.CreateAPIView):
             'message': 'Book borrowed successfully!',
             'data': serializers.data
         }, status=status.HTTP_201_CREATED)
-from rest_framework import generics, status
-from rest_framework.response import Response
-from .models import BookTransaction
-from .serializers import BookTransactionSerializer
-from django.utils import timezone
-
 class BookTransactionSearchView(generics.ListAPIView):
     serializer_class = BookTransactionSerializer
 
@@ -305,3 +306,29 @@ class BookTransactionSearchView(generics.ListAPIView):
             remainday=F('days_registered') - (today - F('borrow_date')).days
             ).filter(remainday__gte=int(day_remaining))
         return queryset
+class UpdateTransactionStatusView(APIView):
+    def post(self, request, *args, **kwargs):
+        transac_id = request.data.get('transac_id')
+        
+        # Kiểm tra sự tồn tại của giao dịch
+        try:
+            transaction = BookTransaction.objects.get(id=transac_id)
+        except BookTransaction.DoesNotExist:
+            return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Cập nhật ngày trả nếu chưa có và hoàn tất giao dịch
+        if not transaction.return_date:
+            transaction.return_date = timezone.now()  # Đặt ngày trả thành ngày hiện tại
+            transaction.save()
+            
+            # Tăng số lượng sách
+            book = transaction.book
+            book.quantity += 1
+            book.save()
+
+            return Response({
+                'message': 'Transaction updated to returned status successfully!',
+                'transaction_id': transac_id
+            }, status=status.HTTP_200_OK)
+        
+        return Response({'error': 'Transaction is already marked as returned'}, status=status.HTTP_400_BAD_REQUEST)

@@ -18,7 +18,7 @@ class Manager(AbstractUser):
         return self.username
 
 class Student(models.Model):
-    models.CharField(primary_key=True, max_length=8, default=generate_random_string, editable=False, unique=True)
+    id = models.CharField(primary_key=True, max_length=8, default=generate_random_string, editable=False, unique=True)
     name = models.CharField(max_length=255)
     student_class = models.CharField(max_length=50)  # Tránh sử dụng từ khóa Class
     birthday = models.DateField()
@@ -39,10 +39,9 @@ class Book(models.Model):
     author = models.CharField(max_length=255)
     category = models.CharField(max_length=255)
     publish_date = models.DateField()
-    quantity = models.PositiveIntegerField()
+    quantity = models.IntegerField()
     def save(self, *args, **kwargs):
-        book = self.book
-        if book.quantity <= 0:
+        if self.quantity <= 0:
             raise ValidationError("This book is currently unavailable.")
         super().save(*args, **kwargs)
     def __str__(self):
@@ -50,7 +49,7 @@ class Book(models.Model):
 
 class BookTransaction(models.Model):
     id = models.AutoField(primary_key=True)
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)  # Đổi thành chữ thường
+    student = models.ForeignKey(Student,to_field='student_id', on_delete=models.CASCADE)  # Đổi thành chữ thường
     book = models.ForeignKey(Book, on_delete=models.CASCADE)  # Đổi thành chữ thường
     borrow_date = models.DateField(default= timezone.now)
     days_registered = models.PositiveIntegerField()
