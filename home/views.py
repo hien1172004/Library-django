@@ -1,67 +1,307 @@
-from rest_framework.authtoken.models import Token
+from django.forms import ValidationError
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import viewsets, generics, status
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Manager, Student, Book, BookTransaction, LibraryLog
-from .serializers import ManagerSerializer, StudentSerializer, BookSerializer, BookTransactionSerializer, LibraryLogSerializer, LoginSerializer
+from .models import *
+from .serializers import *
+from django.shortcuts import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-class BookAddAPIView(generics.CreateAPIView):
+from django.db.models import F
+#----- Phan Trang------
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 2  # Số sách mặc định mỗi trang
+    page_size_query_param = 'page_size'  # Cho phép người dùng thay đổi số lượng sách mỗi trang qua tham số page_size
+    max_page_size = 10  # Giới hạn số sách tối đa mỗi trang
+# --BOOK---
+class AddBookView(generics.CreateAPIView):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-
-class BookUpdateAPIView(generics.UpdateAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-
-class BookSearchAPIView(generics.ListAPIView):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
-
-    def get(self, request, *args, **kwargs):
-        title = request.query_params.get("title", None)
-        author = request.query_params.get('author', None)
-        category = request.query_params.get('category', None)
-        page_size = request.query_params.get('pageSize', 10)
-
-        queryset = self.get_queryset()
-        if title:
-            queryset = queryset.filter(title__icontains=title)
-        if author: 
-            queryset = queryset.filter(author__icontains=author)
-        if category:
-            queryset = queryset.filter(category__icontains=category)
-
-        # Phân trang
-        paginator = PageNumberPagination()
-        paginator.page_size = page_size
-        result_page = paginator.paginate_queryset(queryset, request)
-        serializer = self.get_serializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-class BookDeleteAPIView(generics.DestroyAPIView):
-    queryset = Book.objects.all()
-
-    def destroy(self, request, *args, **kwargs):
-        book = self.get_object()
-        # Kiểm tra xem sách có đã được mượn hay không
-        if BookTransaction.objects.filter(book=book).exists():
-            return Response({"error": "Cannot delete book that is currently borrowed."}, status=status.HTTP_400_BAD_REQUEST)
-        self.perform_destroy(book)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-class LoginAPIView(generics.GenericAPIView):
-    serializer_class = LoginSerializer  # Sử dụng LoginSerializer
-
-    def post(self, request, *args, **kwargs):
+    permission_classes = [IsAuthenticated]
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)  # Kiểm tra tính hợp lệ của dữ liệu
+       
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Book added successfully!',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
         
-        username = serializer.validated_data['username']
-        password = serializer.validated_data['password']
+        return Response({
+            'message': 'Failed to add book',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+class EditBookView(generics.UpdateAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [IsAuthenticated]
+    def get_object(self):
+        book_id = self.request.data.get('book_id')
+        return get_object_or_404(Book, id=book_id)
 
-        # Xác thực người dùng
+    def update(self, request, *args, **kwargs):
+        book = self.get_object()
+        serializer = self.get_serializer(book, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Book updated successfully!',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'message': 'Failed to update book',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+class SearchBooksView(generics.ListAPIView):
+    serializer_class = BookSerializer
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        # Lấy các tham số từ query params (tham số trong URL)
+        title = self.request.query_params.get("title", "")
+        author = self.request.query_params.get("author", "")
+        category = self.request.query_params.get("category", "")
+        
+        queryset = Book.objects.all()
+        
+        # Áp dụng các bộ lọc nếu có tham số tìm kiếm
+        if title:
+            queryset = queryset.filter(title__icontains=title)  # Tìm theo tiêu đề sách
+        if author:
+            queryset = queryset.filter(author__icontains=author)  # Tìm theo tác giả
+        if category:
+            queryset = queryset.filter(category__icontains=category)  # Tìm theo thể loại sách
+
+        return queryset
+class DeleteBookView(generics.DestroyAPIView):
+    queryset = Book.objects.all()
+    permission_classes = [IsAuthenticated]
+    
+    def get_object(self):
+        return get_object_or_404(Book, id=self.kwargs['pk'])
+
+    def delete(self, request, *args, **kwargs):
+        book = self.get_object()
+
+        # Kiểm tra nếu sách đã được mượn (ví dụ: quantity == 0)
+        if BookTransaction.objects.filter(book=book, return_date__isnull=True).exists():
+            return Response({
+                'message': 'Book cannot be deleted because it has been borrowed.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        book.delete()
+        return Response({
+            'message': 'Book deleted successfully!'
+        }, status=status.HTTP_200_OK)
+
+#--------Manager----------
+class LoginView(APIView):
+    permission_classes = [AllowAny]  # Cho phép tất cả người dùng gọi API này
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        # Kiểm tra thông tin người dùng
         user = authenticate(username=username, password=password)
         if user is not None:
-            # Nếu người dùng xác thực thành công, tạo token
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key}, status=status.HTTP_200_OK)
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+            # Nếu người dùng hợp lệ, tạo token
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            token = Token.objects.create(token=access_token)
+            return Response({
+                'token': access_token,  # Trả về token cho client
+            }, status=status.HTTP_200_OK)  # Trả về mã trạng thái 200 (thành công)
+        else:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]  # Chỉ người dùng đã đăng nhập mới có quyền thay đổi mật khẩu
+
+    def post(self, request, *args, **kwargs):
+        user = request.user  # Lấy thông tin người dùng đã xác thực
+        old_password = request.data.get('old')
+        new_password = request.data.get('new')
+
+        # Kiểm tra mật khẩu cũ
+        if not user.check_password(old_password):
+            return Response({'error': 'Old password is incorrect'}, status=400)
+
+        # Đổi mật khẩu
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': 'Password updated successfully'})
+#----------------Students----------
+class StudentDetailView(generics.RetrieveAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    lookup_field = 'student_id' 
+class StudentAddView(generics.CreateAPIView):
+    queryset = Student.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [IsAuthenticated]
+    def create(self, request, *args, **kwargs):
+        serializers = StudentSerializer(data = request.data)
+        if serializers.is_valid():
+            serializers.save()
+            return Response({
+                'message': 'Student added sucessfully!',
+                'data': serializers.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            "message": 'Failed to add student',
+            'errors' : serializers.errors
+        }, status= status.HTTP_400_BAD_REQUEST)
+class StudentEditView(generics.UpdateAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticated]
+    def get_object(self):
+        return get_object_or_404(Student,id = self.kwargs['pk'])
+    def update(self, request, *args, **kwargs):
+        student = self.get_object()
+        serializers = StudentSerializer(student, data = request.data, partial = True)
+        if serializers.is_valid():
+            serializers.save()
+            return Response({
+                'message':"student update Success",
+                'data' : serializers.data
+            }, status= status.HTTP_200_OK)
+        return Response({
+            'errors': "Failed to update student",
+            'data': serializers.errors
+        },status= status.HTTP_400_BAD_REQUEST)
+class StudentDeleteView(generics.DestroyAPIView):
+    queryset = Student.objects.all()
+    permission_classes = [IsAuthenticated]
+   
+    def delete(self, request, *args, **kwargs):
+        student = self.get_object()
+        student.delete()
+        return Response({'message': 'Delete Successfully'}, status= status.HTTP_204_NO_CONTENT_OK)
+class StudentSearchView(generics.ListAPIView):
+    serializer_class = StudentSerializer
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        queryset = Student.objects.all()
+        name = self.request.query_params.get("name", "")
+        student_class = self.request.query_params.get("Class", "")  
+
+        if name:
+            queryset = queryset.filter(name__icontains=name) 
+        if student_class:
+            queryset = queryset.filter(student_class__icontains=student_class)  
+
+        return queryset
+#--------- LibraryLog-----
+class CheckInView(generics.CreateAPIView):
+    seriaizer_class= LibraryLogSerializer
+    def create(self, request, *args, **kwargs):
+        student_id = request.data.get('student_id')
+        try:
+            student = Student.objects.get(student_id=student_id)
+        except Student.DoesNotExist:
+            raise ValidationError({"student_id": "Student with this ID does not exist."}) 
+        log = LibraryLog.objects.create(student=student, checked_in=timezone.now())
+        serializer = self.get_serializer(log)
+        return Response({
+            'message': 'Check-in successful',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
+class CheckOutView(generics.UpdateAPIView):
+    queryset = LibraryLog.objects.all()
+    serializer_class = LibraryLogSerializer
+
+    def update(self, request, *args, **kwargs):
+        student_id = request.data.get("student_id")
+
+        # Lấy sinh viên từ Student
+        try:
+            student = Student.objects.get(student_id=student_id)
+        except Student.DoesNotExist:
+            raise ValidationError({"student_id": "Student with this ID does not exist."})
+        
+        # Tìm bản ghi check-in chưa có thời gian check-out
+        log = LibraryLog.objects.filter(student=student, checked_out__isnull=True).first()
+
+        # Cập nhật thời gian check-out
+        log.checked_out = timezone.now()
+        log.save()
+        serializer = self.get_serializer(log)
+
+        return Response({
+            "message": "Check-out successful",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+class BookTransactionAddView(generics.CreateAPIView):
+    queryset = BookTransaction.objects.all()
+    serializer_class = BookTransactionSerializer
+
+    def create(self, request, *args, **kwargs):
+        student_id = request.data.get('student_id')
+        book_id = request.data.get('book_id')
+        days_registered = request.data.get('day_registered')
+
+        # Kiểm tra sự tồn tại của sinh viên và sách
+        try:
+            student = Student.objects.get(student_id=student_id)
+        except Student.DoesNotExist:
+            return Response({'message': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            book = Book.objects.get(id=book_id)
+        except Book.DoesNotExist:
+            return Response({'message': 'Book not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Kiểm tra xem sách còn tồn kho
+        if book.quantity <= 0:
+            return Response({'message': 'Book not available'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Tạo giao dịch mượn sách
+        transaction = BookTransaction.objects.create(
+            student=student,
+            book=book,
+            borrow_date=timezone.now(),
+            days_registered = days_registered
+        )
+        serializers = self.get_serializer(transaction)
+        # Giảm số lượng sách còn lại trong thư viện
+        book.quantity -= 1
+        book.save()
+
+        return Response({
+            'message': 'Book borrowed successfully!',
+            'data': serializers.data
+        }, status=status.HTTP_201_CREATED)
+from rest_framework import generics, status
+from rest_framework.response import Response
+from .models import BookTransaction
+from .serializers import BookTransactionSerializer
+from django.utils import timezone
+
+class BookTransactionSearchView(generics.ListAPIView):
+    serializer_class = BookTransactionSerializer
+
+    def get_queryset(self):
+        queryset = BookTransaction.objects.all()
+
+        student_id = self.request.data.get('student_id', None)
+        book_id = self.request.data.get('book_id', None)
+        day_remaining = self.request.data.get('day_remaining', None)
+
+        if student_id:
+            queryset = queryset.filter(student__student_id=student_id)
+        if book_id:
+            queryset = queryset.filter(book__id=book_id)
+        
+        if day_remaining is not None:
+            today = timezone.now().date()
+            # Tính toán số ngày còn lại và lọc theo điều kiện
+            queryset = queryset.annotate(
+            remainday=F('days_registered') - (today - F('borrow_date')).days
+            ).filter(remainday__gte=int(day_remaining))
+        return queryset

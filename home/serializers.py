@@ -1,8 +1,7 @@
 from rest_framework import serializers
-from .models import Manager, Student, Book, BookTransaction, LibraryLog
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
+from .models import LibraryLog, Manager, Student, Book, BookTransaction, Token
+
+
 class ManagerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Manager
@@ -11,19 +10,35 @@ class ManagerSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = '__all__'
+        fields = ['id', 'name', 'student_class', 'birthday', 'student_id']
 
+# Serializer cho Book
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
-        fields = '__all__'
+        fields = ['id', 'title', 'author', 'category', 'publish_date', 'quantity']
 
+# Serializer cho BookTransaction
 class BookTransactionSerializer(serializers.ModelSerializer):
+    student = StudentSerializer(read_only=True)
+    book = BookSerializer(read_only=True)
+
     class Meta:
         model = BookTransaction
-        fields = '__all__'
+        fields = ['id', 'student', 'book', 'borrow_date', 'days_registered', 'return_date']
 
+    def create(self, validated_data):
+        # Tạo một giao dịch mới
+        return super().create(validated_data)
+
+# Serializer cho LibraryLog
 class LibraryLogSerializer(serializers.ModelSerializer):
+    student = StudentSerializer(read_only=True)
+
     class Meta:
         model = LibraryLog
-        fields = '__all__'
+        fields = ['id', 'student', 'checked_in', 'checked_out']
+class TokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Token
+        fields = ['id', 'token', 'created_date']

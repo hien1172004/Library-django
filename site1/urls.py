@@ -20,5 +20,4 @@ from home import views as home
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('home.urls')),  # Thay đổi theo tên ứng dụng của bạn
-     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
 ]
