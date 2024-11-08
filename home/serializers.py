@@ -16,7 +16,7 @@ class StudentSerializer(serializers.ModelSerializer):
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
-        fields = ['id', 'title', 'author', 'category', 'publish_date', 'quantity']
+        fields = ['id', 'title', 'author', 'category', "cover_image", 'publish_date', 'quantity']
 
 # Serializer cho BookTransaction
 class BookTransactionSerializer(serializers.ModelSerializer):

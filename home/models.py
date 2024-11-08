@@ -38,6 +38,7 @@ class Book(models.Model):
     title = models.CharField(max_length=255)
     author = models.CharField(max_length=255)
     category = models.CharField(max_length=255)
+    cover_image = models.CharField(max_length=255, blank=True)
     publish_date = models.DateField()
     quantity = models.IntegerField()
     def save(self, *args, **kwargs):
