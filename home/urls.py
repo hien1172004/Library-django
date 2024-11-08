@@ -31,7 +31,7 @@ urlpatterns = [
     path('lib/check-out/', CheckOutView.as_view(), name='check_out'),
 
     # --BOOK TRANSACTION--
-    path('transactions/add/', BookTransactionAddView.as_view(), name='add_book_transaction'),
-    path('transactions/search/', BookTransactionSearchView.as_view(), name='search_book_transactions'),
-    path('transac/status/', UpdateTransactionStatusView.as_view(), name='update-transaction-status'),
+    path('trans/add/', BookTransactionAddView.as_view(), name='add_book_transaction'),
+    path('trans/search/', BookTransactionSearchView.as_view(), name='search_book_transactions'),
+    path('trans/return/', BookTransactionReturnView.as_view(), name='update-transaction-status'),
 ]
