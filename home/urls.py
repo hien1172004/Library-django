@@ -27,8 +27,8 @@ urlpatterns = [
     path('student/delete/', StudentDeleteView.as_view(), name='student-delete'),
     path('student/search/', StudentSearchView.as_view(), name='student-search'),
     # --LIBRARY LOG--
-    path('library/check-in/', CheckInView.as_view(), name='check_in'),
-    path('library/check-out/', CheckOutView.as_view(), name='check_out'),
+    path('lib/check-in/', CheckInView.as_view(), name='check_in'),
+    path('lib/check-out/', CheckOutView.as_view(), name='check_out'),
 
     # --BOOK TRANSACTION--
     path('transactions/add/', BookTransactionAddView.as_view(), name='add_book_transaction'),

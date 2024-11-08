@@ -86,20 +86,13 @@ class SearchBooksView(generics.ListAPIView):#checked
 class DeleteBookView(generics.DestroyAPIView):#checked
     queryset = Book.objects.all()
     permission_classes = [IsAuthenticated]
-    
-    def get_object(self):
-        # Lấy book_id từ tham số truy vấn
-        book_id = self.request.query_params.get('id')
-        # Kiểm tra nếu book_id không có trong query params
-        if not book_id:
-            raise ValidationError('Book id is required.')
-        
-        # Tìm kiếm sách theo book_id
-        return get_object_or_404(Book, id=book_id)
-
     def delete(self, request, *args, **kwargs):
-        book = self.get_object()
-
+        book_id = self.request.query_params.get('id')
+        if not book_id:
+            return Response({
+                'message':"'Book id is required."
+            },status=status.HTTP_400_BAD_REQUEST)
+        book = get_object_or_404(Book, id = book_id)
         # Kiểm tra nếu sách đã được mượn (ví dụ: quantity == 0)
         if BookTransaction.objects.filter(book=book, return_date__isnull=True).exists():
             return Response({
@@ -147,26 +140,29 @@ class ChangePasswordView(APIView):#checked
         user.save()
         return Response({'message': 'Password updated successfully'})
 #----------------Students----------
-class StudentDetailView(generics.RetrieveAPIView):
+class StudentDetailView(generics.RetrieveAPIView):#checked
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
 
-    def get_object(self):
+    def retrieve(self, request, *args, **kwargs):
         # Lấy student_id từ query parameter
-        student_id = self.request.query_params.get('student_id')
+        student_id = request.query_params.get('student_id')
         
         # Kiểm tra nếu student_id không tồn tại trong query parameters
         if not student_id:
             # Trả về phản hồi lỗi nếu không có student_id
-            raise ValidationError({
+            return Response({
                 'message': 'student_id query parameter is required.'
-            })
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         # Sử dụng get_object_or_404 để tìm Student hoặc trả về 404 nếu không tìm thấy
-        return get_object_or_404(Student, student_id=student_id)
-class StudentAddView(generics.CreateAPIView):
+        student = get_object_or_404(Student, student_id=student_id)
+        serializer = self.get_serializer(student)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+class StudentAddView(generics.CreateAPIView):#checked
     queryset = Student.objects.all()
     serializer_class = BookSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def create(self, request, *args, **kwargs):
         serializers = StudentSerializer(data = request.data)
         if serializers.is_valid():
@@ -179,10 +175,10 @@ class StudentAddView(generics.CreateAPIView):
             "message": 'Failed to add student',
             'errors' : serializers.errors
         }, status= status.HTTP_400_BAD_REQUEST)
-class StudentEditView(generics.UpdateAPIView):
+class StudentEditView(generics.UpdateAPIView):#checked
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def get_object(self):
         student_id = self.request.data.get("student_id")
         if not student_id:
@@ -201,21 +197,19 @@ class StudentEditView(generics.UpdateAPIView):
             'errors': "Failed to update student",
             'data': serializers.errors
         },status= status.HTTP_400_BAD_REQUEST)
-class StudentDeleteView(generics.DestroyAPIView):
+class StudentDeleteView(generics.DestroyAPIView):#checked
     queryset = Student.objects.all()
-    permission_classes = [IsAuthenticated]
-    def get_object(self):
+    # permission_classes = [IsAuthenticated]
+    def delete(self, request, *args, **kwargs):
         student_id = self.request.query_params.get('student_id')
         if not student_id:
-            raise ValidationError({
+            return Response({
                 'message': 'student_id query parameter is required.'
-            })
-        return get_object_or_404(Student, student_id=student_id)
-    def delete(self, request, *args, **kwargs):
-        student = self.get_object()
+            }, status=status.HTTP_400_BAD_REQUEST)
+        student = get_object_or_404(Student, student_id = student_id)
         student.delete()
-        return Response({'message': 'Delete Successfully'}, status= status.HTTP_204_NO_CONTENT_OK)
-class StudentSearchView(generics.ListAPIView):
+        return Response({'message': 'Delete Successfully'}, status= status.HTTP_204_NO_CONTENT)
+class StudentSearchView(generics.ListAPIView):#checked
     serializer_class = StudentSerializer
     pagination_class = PageNumberPagination
     def post(self, request, *args, **kwargs):
@@ -232,16 +226,28 @@ class StudentSearchView(generics.ListAPIView):
 
         return queryset
 #--------- LibraryLog-----
-class CheckInView(generics.CreateAPIView):
-    seriaizer_class= LibraryLogSerializer
+class CheckInView(generics.CreateAPIView):#checked
+    serializer_class = LibraryLogSerializer
+
     def create(self, request, *args, **kwargs):
         student_id = request.data.get('student_id')
-        try:
-            student = Student.objects.get(student_id=student_id)
-        except Student.DoesNotExist:
-            raise ValidationError({"student_id": "Student with this ID does not exist."}) 
-        log = LibraryLog.objects.create(student=student, checked_in=timezone.now())
+
+        # Kiểm tra xem student_id có tồn tại trong request không
+        if not student_id:
+            raise serializers.ValidationError({"student_id": "Student ID is required."})
+
+
+        existing_log = LibraryLog.objects.filter(student=student_id, checked_out__isnull=True).first()
+        if existing_log:
+            return Response({
+                'message': 'Student has not checked out yet. Check-out is required before check-in.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        log = LibraryLog.objects.create(student=student_id, checked_in=timezone.now())
+
+        # Lấy dữ liệu đã được serialize để trả về
         serializer = self.get_serializer(log)
+
         return Response({
             'message': 'Check-in successful',
             'data': serializer.data

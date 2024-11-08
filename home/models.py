@@ -17,7 +17,7 @@ class Manager(AbstractUser):
     def __str__(self):
         return self.username
 
-class Student(models.Model):
+class Student(models.Model):#checked
     id = models.CharField(primary_key=True, max_length=8, default=generate_random_string, editable=False, unique=True)
     name = models.CharField(max_length=255)
     student_class = models.CharField(max_length=50)  # Tránh sử dụng từ khóa Class
@@ -60,7 +60,7 @@ class BookTransaction(models.Model):
 
 class LibraryLog(models.Model):
     id = models.AutoField(primary_key=True)
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)  # Đổi thành chữ thường
+    student = models.ForeignKey(Student, to_field='student_id',on_delete=models.CASCADE)  # Đổi thành chữ thường
     checked_in = models.DateTimeField(default=timezone.now)
     checked_out = models.DateTimeField(null=True, blank=True)
 
