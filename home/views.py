@@ -39,8 +39,11 @@ class EditBookView(generics.UpdateAPIView):#checked
     serializer_class = BookSerializer
     permission_classes = [IsAuthenticated]
     def get_object(self):
-        # Sử dụng pk từ URL thay vì từ request.data
-        return get_object_or_404(Book, id=self.kwargs['pk'])
+        
+        book_id = self.request.data.get('id')
+        if not book_id:
+            raise serializers.ValidationError({"id": "Book ID is required"})
+        return get_object_or_404(Book, id=book_id)
 
     def update(self, request, *args, **kwargs):
         book = self.get_object()
@@ -60,12 +63,14 @@ class EditBookView(generics.UpdateAPIView):#checked
 class SearchBooksView(generics.ListAPIView):#checked
     serializer_class = BookSerializer
     pagination_class = PageNumberPagination
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)  # Sử dụng phương thức `list` của `ListAPIView`
     def get_queryset(self):
         # Lấy các tham số từ query params (tham số trong URL)
-        title = self.request.query_params.get("title", "")
-        author = self.request.query_params.get("author", "")
-        category = self.request.query_params.get("category", "")
+        title = self.request.data.get("title", "")
+        author = self.request.data.get("author", "")
+        category = self.request.data.get("category", "")
         
         queryset = Book.objects.all()
         
@@ -120,7 +125,8 @@ class LoginView(APIView):#checked
             access_token = str(refresh.access_token)
             token = Token.objects.create(token=access_token)
             return Response({
-                'token': access_token,  # Trả về token cho client
+                'access': access_token,  # Trả về token truy cập (access token)
+                'refresh': str(refresh),  # Trả về token làm mới (refresh token) - tùy chọn nhưng khuyến khích
             }, status=status.HTTP_200_OK)  # Trả về mã trạng thái 200 (thành công)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
@@ -144,7 +150,19 @@ class ChangePasswordView(APIView):#checked
 class StudentDetailView(generics.RetrieveAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    lookup_field = 'student_id' 
+
+    def get_object(self):
+        # Lấy student_id từ query parameter
+        student_id = self.request.query_params.get('student_id')
+        
+        # Kiểm tra nếu student_id không tồn tại trong query parameters
+        if not student_id:
+            # Trả về phản hồi lỗi nếu không có student_id
+            raise ValidationError({
+                'message': 'student_id query parameter is required.'
+            })
+        # Sử dụng get_object_or_404 để tìm Student hoặc trả về 404 nếu không tìm thấy
+        return get_object_or_404(Student, student_id=student_id)
 class StudentAddView(generics.CreateAPIView):
     queryset = Student.objects.all()
     serializer_class = BookSerializer
@@ -166,7 +184,10 @@ class StudentEditView(generics.UpdateAPIView):
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated]
     def get_object(self):
-        return get_object_or_404(Student,id = self.kwargs['pk'])
+        student_id = self.request.data.get("student_id")
+        if not student_id:
+            raise ValidationError({"message": "Student_id is requierd"})
+        return get_object_or_404(Student,student_id = student_id)
     def update(self, request, *args, **kwargs):
         student = self.get_object()
         serializers = StudentSerializer(student, data = request.data, partial = True)
@@ -183,7 +204,13 @@ class StudentEditView(generics.UpdateAPIView):
 class StudentDeleteView(generics.DestroyAPIView):
     queryset = Student.objects.all()
     permission_classes = [IsAuthenticated]
-   
+    def get_object(self):
+        student_id = self.request.query_params.get('student_id')
+        if not student_id:
+            raise ValidationError({
+                'message': 'student_id query parameter is required.'
+            })
+        return get_object_or_404(Student, student_id=student_id)
     def delete(self, request, *args, **kwargs):
         student = self.get_object()
         student.delete()
@@ -191,11 +218,12 @@ class StudentDeleteView(generics.DestroyAPIView):
 class StudentSearchView(generics.ListAPIView):
     serializer_class = StudentSerializer
     pagination_class = PageNumberPagination
-
+    def post(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)  # Sử dụng phương thức `list` của `ListAPIView`
     def get_queryset(self):
         queryset = Student.objects.all()
-        name = self.request.query_params.get("name", "")
-        student_class = self.request.query_params.get("Class", "")  
+        name = self.request.data.get("name", "")
+        student_class = self.request.data.get("student_class","")  
 
         if name:
             queryset = queryset.filter(name__icontains=name) 
@@ -243,7 +271,7 @@ class CheckOutView(generics.UpdateAPIView):
             "message": "Check-out successful",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
-
+#BookTranscaction
 class BookTransactionAddView(generics.CreateAPIView):
     queryset = BookTransaction.objects.all()
     serializer_class = BookTransactionSerializer
@@ -286,7 +314,8 @@ class BookTransactionAddView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED)
 class BookTransactionSearchView(generics.ListAPIView):
     serializer_class = BookTransactionSerializer
-
+    def post(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)  # Sử dụng phương thức `list` của `ListAPIView`
     def get_queryset(self):
         queryset = BookTransaction.objects.all()
 
