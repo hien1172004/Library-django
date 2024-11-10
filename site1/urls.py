@@ -19,5 +19,5 @@ from django.urls import path, include
 from home import views as home
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('home.urls')),  # Thay đổi theo tên ứng dụng của bạn
+    path('', include('home.urls')),  
 ]

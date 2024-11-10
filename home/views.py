@@ -10,12 +10,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-#----- Phan Trang------
-class CustomPageNumberPagination(PageNumberPagination):
-    page_size = 10  # Số sách mặc định mỗi trang
-    page_size_query_param = 'page_size'  # Cho phép người dùng thay đổi số lượng sách mỗi trang qua tham số page_size
-    max_page_size = 10  # Giới hạn số sách tối đa mỗi trang
-# --BOOK---
+
 class AddBookView(generics.CreateAPIView):#checked
     queryset = Book.objects.all()
     serializer_class = BookSerializer
@@ -65,9 +60,8 @@ class SearchBooksView(generics.ListAPIView):#checked
     pagination_class = PageNumberPagination
     permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)  # Sử dụng phương thức `list` của `ListAPIView`
+        return self.list(request, *args, **kwargs) 
     def get_queryset(self):
-        # Lấy các tham số từ query params (tham số trong URL)
         title = self.request.data.get("title", "")
         author = self.request.data.get("author", "")
         category = self.request.data.get("category", "")
