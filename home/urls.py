@@ -18,7 +18,7 @@ urlpatterns = [
     path('book/search/', SearchBooksView.as_view(), name='book-search'),  
     path('book/add/', AddBookView.as_view(), name = "book-add"),
     #Manager
-    path('user/login/', LoginView.as_view(), name='login'),
+    path('user/login', LoginView.as_view(), name='login'),
     path('user/password-set/', ChangePasswordView.as_view(), name='change-password'),
     #Student
     path('student/detail/', StudentDetailView.as_view(), name='student-detail'),

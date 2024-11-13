@@ -10,6 +10,19 @@ from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.core.paginator import Paginator, EmptyPage, InvalidPage
+class CustomPagination(PageNumberPagination):
+    page_size = 10  # Số lượng mục mỗi trang mặc định
+    page_size_query_param = 'page_size'  # Cho phép người dùng chỉ định page_size
+    max_page_size = 100  # Số lượng tối đa mục mỗi trang
+    def get_paginated_response(self, data):
+        return Response({
+            'message' : 'OK',
+            'count': self.page.paginator.count,             # Tổng số phần tử
+            'total_pages': self.page.paginator.num_pages,   # Tổng số trang
+            'current_page': self.page.number,               # Trang hiện tại
+            'results': data                                 # Dữ liệu của trang hiện tại
+        })
 
 class AddBookView(generics.CreateAPIView):#checked
     queryset = Book.objects.all()
@@ -57,17 +70,32 @@ class EditBookView(generics.UpdateAPIView):#checked
         }, status=status.HTTP_400_BAD_REQUEST)
 class SearchBooksView(generics.ListAPIView):#checked
     serializer_class = BookSerializer
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
     permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs) 
+        # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
+        response = self.list(request, *args, **kwargs)
+        paginated_data = response.data
+        
+        # Thêm các thông tin phân trang vào cấu trúc dữ liệu
+        response.data = {
+            "message" : paginated_data['message'],
+            "total_elements": paginated_data['count'],  # Tổng số phần tử
+            "total_pages": paginated_data['total_pages'],  # Tổng số trang
+            "current_page": paginated_data['current_page'],  # Trang hiện tại
+            "results": paginated_data['results'],  # Kết quả cho trang hiện tại
+        }
+
+        return response
     def get_queryset(self):
         title = self.request.data.get("title", "")
         author = self.request.data.get("author", "")
         category = self.request.data.get("category", "")
-        
+        order_by = self.request.data.get('order_by', "title")
         queryset = Book.objects.all()
-        
+        allowed_order_fields = ["title", "author", "category"]
+        if order_by not in allowed_order_fields:
+            order_by = "title"  # Mặc định sắp xếp theo title nếu order_by không hợp lệ
         # Áp dụng các bộ lọc nếu có tham số tìm kiếm
         if title:
             queryset = queryset.filter(title__icontains=title)  # Tìm theo tiêu đề sách
@@ -75,8 +103,10 @@ class SearchBooksView(generics.ListAPIView):#checked
             queryset = queryset.filter(author__icontains=author)  # Tìm theo tác giả
         if category:
             queryset = queryset.filter(category__icontains=category)  # Tìm theo thể loại sách
-
+         # Sắp xếp theo trường `order_by`
+        queryset = queryset.order_by(order_by)
         return queryset
+
 class DeleteBookView(generics.DestroyAPIView):#checked
     queryset = Book.objects.all()
     permission_classes = [IsAuthenticated]
@@ -205,10 +235,23 @@ class StudentDeleteView(generics.DestroyAPIView):#checked
         return Response({'message': 'Delete Successfully'}, status= status.HTTP_204_NO_CONTENT)
 class StudentSearchView(generics.ListAPIView):#checked
     serializer_class = StudentSerializer
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
     permission_classes = [IsAuthenticated]
     def post(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)  # Sử dụng phương thức `list` của `ListAPIView`
+        # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
+        response = self.list(request, *args, **kwargs)
+        paginated_data = response.data
+        
+        # Thêm các thông tin phân trang vào cấu trúc dữ liệu
+        response.data = {
+            'message': paginated_data["message"],
+            "total_elements": paginated_data['count'],  # Tổng số phần tử
+            "total_pages": paginated_data['total_pages'],  # Tổng số trang
+            "current_page": paginated_data['current_page'],  # Trang hiện tại
+            "results": paginated_data['results'],  # Kết quả cho trang hiện tại
+        }
+        
+        return response
     def get_queryset(self):
         queryset = Student.objects.all()
         name = self.request.data.get("name", "")
@@ -311,8 +354,23 @@ class BookTransactionAddView(generics.CreateAPIView):#checked
         }, status=status.HTTP_201_CREATED)
 class BookTransactionSearchView(generics.ListAPIView):#checked
     serializer_class = BookTransactionSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
     def post(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)  # Sử dụng phương thức `list` của `ListAPIView`
+        # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
+        response = self.list(request, *args, **kwargs)
+        paginated_data = response.data
+        
+        # Thêm các thông tin phân trang vào cấu trúc dữ liệu
+        response.data = {
+            'message': paginated_data["message"],
+            "total_elements": paginated_data['count'],  # Tổng số phần tử
+            "total_pages": paginated_data['total_pages'],  # Tổng số trang
+            "current_page": paginated_data['current_page'],  # Trang hiện tại
+            "results": paginated_data['results'],  # Kết quả cho trang hiện tại
+        }
+        
+        return response
     def get_queryset(self):
         queryset = BookTransaction.objects.all()
         queryset = queryset.filter(return_date__isnull=True)
