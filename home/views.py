@@ -428,3 +428,56 @@ class BookTransactionReturnView(generics.UpdateAPIView):#checked
             }, status=status.HTTP_200_OK)
 
         return Response({'error': 'Transaction is already marked as returned'}, status=status.HTTP_400_BAD_REQUEST)
+    
+#------Category-------
+class CategoryAddView(generics.CreateAPIView):#checked
+    queryset = Category.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [IsAuthenticated]
+    def create(self, request, *args, **kwargs):
+        serializers =CategorySerializer(data = request.data)
+        if serializers.is_valid():
+            serializers.save()
+            return Response({
+                'message': 'Category added sucessfully!',
+                'data': serializers.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            "message": 'Failed to add Category',
+            'errors' : serializers.errors
+        }, status= status.HTTP_400_BAD_REQUEST)
+    
+class CategoryEditview(generics.UpdateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAuthenticated]
+    def get_object(self):#checked
+        category_id = self.request.data.get("id")
+        if not category_id:
+            raise ValidationError({"message": "Category_id is requierd"})
+        return get_object_or_404(Category,id = category_id)
+    def update(self, request, *args, **kwargs):
+        category = self.get_object()
+        serializers = CategorySerializer(category, data = request.data, partial = True)
+        if serializers.is_valid():
+            serializers.save()
+            return Response({
+                'message':"category update Success",
+                'data' : serializers.data
+            }, status= status.HTTP_200_OK)
+        return Response({
+            'errors': "Failed to update category_id",
+            'data': serializers.errors
+        },status= status.HTTP_400_BAD_REQUEST)
+class CatergoryDeleteView(generics.DestroyAPIView):#checked
+    queryset = Category.objects.all()
+    permission_classes = [IsAuthenticated]
+    def delete(self, request, *args, **kwargs):
+        category_id = self.request.query_params.get('category_id')
+        if not category_id:
+            return Response({
+                'message': 'category_id query parameter is required.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        student = get_object_or_404(Category, id = category_id)
+        student.delete()
+        return Response({'message': 'Delete Successfully'}, status= status.HTTP_204_NO_CONTENT)
