@@ -76,7 +76,6 @@ class SearchBooksView(generics.ListAPIView):#checked
         # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
         response = self.list(request, *args, **kwargs)
         paginated_data = response.data
-        
         # Thêm các thông tin phân trang vào cấu trúc dữ liệu
         response.data = {
             "message" : paginated_data['message'],
@@ -85,13 +84,13 @@ class SearchBooksView(generics.ListAPIView):#checked
             "current_page": paginated_data['current_page'],  # Trang hiện tại
             "results": paginated_data['results'],  # Kết quả cho trang hiện tại
         }
-
         return response
     def get_queryset(self):
         title = self.request.data.get("title", "")
         author = self.request.data.get("author", "")
         category = self.request.data.get("category", "")
         order_by = self.request.data.get('order_by', "title")
+        order = self.request.data.get('order', "")
         queryset = Book.objects.all()
         allowed_order_fields = ["title", "author", "category"]
         if order_by not in allowed_order_fields:
@@ -104,7 +103,11 @@ class SearchBooksView(generics.ListAPIView):#checked
         if category:
             queryset = queryset.filter(category__icontains=category)  # Tìm theo thể loại sách
          # Sắp xếp theo trường `order_by`
-        queryset = queryset.order_by(order_by)
+        if order == 'ASC':
+            queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
+        elif order == 'DESC':
+            queryset = queryset.order_by(f"-{order_by}")  # Sắp xếp theo thứ tự giảm dần
+    
         return queryset
 
 class DeleteBookView(generics.DestroyAPIView):#checked
@@ -481,3 +484,6 @@ class CatergoryDeleteView(generics.DestroyAPIView):#checked
         student = get_object_or_404(Category, id = category_id)
         student.delete()
         return Response({'message': 'Delete Successfully'}, status= status.HTTP_204_NO_CONTENT)
+class CategoryAllView(generics.ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer

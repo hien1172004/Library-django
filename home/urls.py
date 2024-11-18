@@ -37,4 +37,5 @@ urlpatterns = [
     path('category/add', CategoryAddView.as_view(), name = 'add_category'),
     path('category/edit', CategoryEditview.as_view(), name = 'edit_category'),
     path('category/delete', CatergoryDeleteView.as_view(), name='delete_category'),
+    path('category/all', CategoryAllView.as_view(), name = 'all_category')
 ]
