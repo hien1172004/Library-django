@@ -145,7 +145,7 @@ class LoginView(APIView):#checked
             # Nếu người dùng hợp lệ, tạo token
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
-            token = Token.objects.create(token=access_token)
+            # token = Token.objects.create(token=access_token)
             return Response({
                 'access': access_token,  # Trả về token truy cập (access token)
                 'refresh': str(refresh),  # Trả về token làm mới (refresh token) - tùy chọn nhưng khuyến khích
@@ -290,7 +290,7 @@ class CheckInView(generics.CreateAPIView):#checked
                 'message': 'Student has not checked out yet. Check-out is required before check-in.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        log = LibraryLog.objects.create(student_id=student_id, checked_in=timezone.now())
+        log = LibraryLog.objects.create(student_id=student_id)
 
         # Lấy dữ liệu đã được serialize để trả về
         serializer = self.get_serializer(log)
@@ -310,7 +310,7 @@ class CheckOutView(generics.UpdateAPIView):#checked
         log = LibraryLog.objects.filter(student_id=student_id, checked_out__isnull=True).first()
 
         # Cập nhật thời gian check-out
-        log.checked_out = timezone.now()
+        log.checked_out = int(time.time())
         log.save()
         serializer = self.get_serializer(log)
 
@@ -351,7 +351,7 @@ class BookTransactionAddView(generics.CreateAPIView):#checked
         transaction = BookTransaction.objects.create(
             student=student,
             book=book,
-            borrow_date=timezone.now().date(),
+            borrow_date=int(time.time()),
             days_registered = days_registered
         )
         serializer = self.get_serializer(transaction)
@@ -389,9 +389,9 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
         book_id = self.request.data.get('book_id', None)
         day_remaining = self.request.data.get('day_remaining', None)
         order_by = self.request.data.get('order_by', "")
-        order = self.request.data.get('order', "")
         if not order_by:
-            order_by = 'student_id'
+            order_by = "student_id"
+        order = self.request.data.get('order', "")
         if not order:
             order = 'ASC'
         if student_id:
@@ -402,15 +402,16 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
             today = timezone.now().date()
             filtered_queryset = []
             for i in queryset:
-                return_date = i.borrow_date + datetime.timedelta(days=i.days_registered)
+                borrow_date = datetime.date.fromtimestamp(i.borrow_date)
+                return_date = borrow_date + datetime.timedelta(days=i.days_registered)
                 remain_day = (return_date - today).days
                 if remain_day >= int(day_remaining):
                   filtered_queryset.append(i)  # Thêm đối tượng vào danh sách nếu thỏa mãn điều kiện
             queryset = filtered_queryset
         if order == 'ASC':
-            queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
+            queryset = sorted(queryset, key=lambda x: getattr(x, order_by))
         elif order == 'DESC':
-            queryset = queryset.order_by(f"-{order_by}")  # Sắp xếp theo thứ tự giảm dần
+            queryset = sorted(queryset, key=lambda x: getattr(x, order_by), reverse=True)
         return queryset
 class BookTransactionReturnView(generics.UpdateAPIView):#checked
     queryset = BookTransaction.objects.all()
@@ -432,16 +433,16 @@ class BookTransactionReturnView(generics.UpdateAPIView):#checked
 
         # Cập nhật ngày trả nếu chưa có và hoàn tất giao dịch
         if not transaction.return_date:
-            transaction.return_date = timezone.now().date()  # Đặt ngày trả thành ngày hiện tại
+            transaction.return_date = int(time.time()) # Đặt ngày trả thành ngày hiện tại
             transaction.save()
             # Tăng số lượng sách
             book = transaction.book
             book.quantity += 1
             book.save()
-
+            serializer = self.get_serializer(transaction)
             return Response({
                 'message': 'Book successfully returned!',
-                'transaction_id': transaction.id
+                'data': serializer.data
             }, status=status.HTTP_200_OK)
 
         return Response({'error': 'Transaction is already marked as returned'}, status=status.HTTP_400_BAD_REQUEST)

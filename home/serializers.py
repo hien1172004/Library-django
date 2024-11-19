@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import LibraryLog, Manager, Student, Book, BookTransaction, Token, Category
+from .models import LibraryLog, Manager, Student, Book, BookTransaction, Category
 
 
 class ManagerSerializer(serializers.ModelSerializer):
@@ -38,10 +38,6 @@ class LibraryLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = LibraryLog
         fields = ['id', 'student', 'checked_in', 'checked_out']
-class TokenSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Token
-        fields = ['id', 'token', 'created_date']
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category

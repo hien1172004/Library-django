@@ -9,9 +9,6 @@ def generate_book_id():
     random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"book_{random_part}"
 
-class TimestampField(models.DateTimeField):
-    def db_type(self, connection):
-        return 'timestamp'  # Chỉ định kiểu dữ liệu là TIMESTAMP cho cơ sở dữ liệu
 class Manager(AbstractUser):
     id = models.AutoField(primary_key=True)
     username = models.CharField(max_length=100, unique=True)
@@ -22,8 +19,8 @@ class Manager(AbstractUser):
     def save(self, *args, **kwargs):
         # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
         if not self.created_at:
-            self.created_at = int(time.mktime(timezone.now().timetuple()))
-        self.updated_at = int(time.mktime(timezone.now().timetuple()))  # Cập nhật trường updated_at
+            self.created_at = int(time.time())
+        self.updated_at = int(time.time())
         super().save(*args, **kwargs)
     def __str__(self):
         return self.username
@@ -40,8 +37,8 @@ class Student(models.Model):#checked
     def save(self, *args, **kwargs):
         # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
         if not self.created_at:
-            self.created_at = int(time.mktime(timezone.now().timetuple()))
-        self.updated_at = int(time.mktime(timezone.now().timetuple()))  # Cập nhật trường updated_at
+            self.created_at = int(time.time())
+        self.updated_at = int(time.time()) # Cập nhật trường updated_at
         super().save(*args, **kwargs)
     def __str__(self):
         return self.name
@@ -58,60 +55,62 @@ class Book(models.Model):
     author = models.CharField(max_length=255)
     category = models.CharField(max_length=255)
     cover_image = models.CharField(max_length=255, blank=True)
-    publish_date = models.DateField()
+    publish_date = models.BigIntegerField()
     quantity = models.IntegerField()
     created_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian tạo
     updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
 
     def save(self, *args, **kwargs):
-        # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
+     
+        self.publish_date = int(time.time())
         if not self.created_at:
-            self.created_at = int(time.mktime(timezone.now().timetuple()))
-        self.updated_at = int(time.mktime(timezone.now().timetuple()))  # Cập nhật trường updated_at
+            self.created_at = int(time.time())
+        self.updated_at = int(time.time())
         super().save(*args, **kwargs)
     def __str__(self):
         return self.title
 
 class BookTransaction(models.Model):
     id = models.AutoField(primary_key=True)
-    student = models.ForeignKey(Student,to_field='student_id', on_delete=models.CASCADE)  
-    book = models.ForeignKey(Book, on_delete=models.CASCADE)  
-    borrow_date = models.DateField(default= timezone.now)
+    student = models.ForeignKey(Student, to_field='student_id', on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    borrow_date = models.BigIntegerField(editable=False)  # Unix timestamp
     days_registered = models.PositiveIntegerField()
-    return_date = models.DateField(null=True, blank=True)
-    created_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian tạo
-    updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
+    return_date = models.BigIntegerField(null=True, blank=True, editable=False)  # Unix timestamp
+    created_at = models.BigIntegerField(editable=False)  # Unix timestamp
+    updated_at = models.BigIntegerField(editable=False)  # Unix timestamp
 
     def save(self, *args, **kwargs):
-        # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
+        # Nếu borrow_date chưa được set, lấy thời gian hiện tại
+        if not self.borrow_date:
+            self.borrow_date = int(time.time())
+
+        # Lưu thời gian tạo nếu chưa có
         if not self.created_at:
-            self.created_at = int(time.mktime(timezone.now().timetuple()))
-        self.updated_at = int(time.mktime(timezone.now().timetuple()))  # Cập nhật trường updated_at
+            self.created_at = int(time.time())
+
+        # Cập nhật thời gian
+        self.updated_at = int(time.time())
+
         super().save(*args, **kwargs)
     def __str__(self):
         return f"Transaction {self.id} - {self.student.name} - {self.book.title}"
 
 class LibraryLog(models.Model):
     id = models.AutoField(primary_key=True)
-    student = models.ForeignKey(Student, to_field='student_id',on_delete=models.CASCADE) 
-    checked_in = models.DateTimeField(default=timezone.now)
-    checked_out = models.DateTimeField(null=True, blank=True)
-    def __str__(self):
-        return f"Log {self.id} - {self.student.name}"
-class Token(models.Model):
-    id = models.AutoField(primary_key=True)
-    token = models.CharField(max_length=255, unique=True)
-    created_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian tạo
-    updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
+    student = models.ForeignKey(Student, to_field='student_id', on_delete=models.CASCADE)
+    checked_in = models.BigIntegerField(default=int(time.time()))  # Unix timestamp cho thời gian mượn
+    checked_out = models.BigIntegerField(null=True, blank=True)  # Unix timestamp cho thời gian trả sách (có thể null)
 
     def save(self, *args, **kwargs):
-        # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
-        if not self.created_at:
-            self.created_at = int(time.mktime(timezone.now().timetuple()))
-        self.updated_at = int(time.mktime(timezone.now().timetuple()))  # Cập nhật trường updated_at
-        super().save(*args, **kwargs) 
+        if not self.checked_in:
+            self.checked_in = int(time.time())  # Lưu timestamp khi mượn sách
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.token
+        return f"Log {self.id} - {self.student.name}"
+
 class Category(models.Model):
     id = models.AutoField(primary_key=True)
     label = models.CharField(max_length=255, unique=True)
@@ -121,6 +120,6 @@ class Category(models.Model):
     def save(self, *args, **kwargs):
         # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
         if not self.created_at:
-            self.created_at = int(time.mktime(timezone.now().timetuple()))
-        self.updated_at = int(time.mktime(timezone.now().timetuple()))  # Cập nhật trường updated_at
+            self.created_at = int(time.time())
+        self.updated_at = int(time.time())
         super().save(*args, **kwargs)
