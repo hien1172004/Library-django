@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Manager, Student, LibraryLog, Book, BookTransaction
+from .models import Manager, Student, LibraryLog, Book, BookTransaction, Category
 # Register your models here.
 class ManagerAdmin(admin.ModelAdmin):
     list_display = ["username", "password", "last_login"]
@@ -10,3 +10,4 @@ admin.site.register(Student)
 admin.site.register(LibraryLog)
 admin.site.register(Book)
 admin.site.register(BookTransaction)
+admin.site.register(Category)

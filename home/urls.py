@@ -3,11 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import *
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-# /managers/-GET
-# /managers/-POST
-#/managers/{id} -GET
-#/managers/{id} -PUT
-#/managers/{id} -DELETE
+
 urlpatterns = [
     #Token
     path('api/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),

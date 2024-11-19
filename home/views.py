@@ -95,6 +95,8 @@ class SearchBooksView(generics.ListAPIView):#checked
         allowed_order_fields = ["title", "author", "category"]
         if order_by not in allowed_order_fields:
             order_by = "title"  # Mặc định sắp xếp theo title nếu order_by không hợp lệ
+        if not order:
+            order = 'ASC'
         # Áp dụng các bộ lọc nếu có tham số tìm kiếm
         if title:
             queryset = queryset.filter(title__icontains=title)  # Tìm theo tiêu đề sách
@@ -244,7 +246,6 @@ class StudentSearchView(generics.ListAPIView):#checked
         # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
         response = self.list(request, *args, **kwargs)
         paginated_data = response.data
-        
         # Thêm các thông tin phân trang vào cấu trúc dữ liệu
         response.data = {
             'message': paginated_data["message"],
@@ -253,18 +254,25 @@ class StudentSearchView(generics.ListAPIView):#checked
             "current_page": paginated_data['current_page'],  # Trang hiện tại
             "results": paginated_data['results'],  # Kết quả cho trang hiện tại
         }
-        
         return response
     def get_queryset(self):
         queryset = Student.objects.all()
         name = self.request.data.get("name", "")
         student_class = self.request.data.get("student_class","")  
-
+        order_by = self.request.data.get("order_by", "")
+        order = self.request.data.get("order", "")
+        if not order_by:
+            order_by = "name"
+        if not order:
+            order = 'ASC'
         if name:
             queryset = queryset.filter(name__icontains=name) 
         if student_class:
             queryset = queryset.filter(student_class__icontains=student_class)  
-
+        if order == 'ASC':
+            queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
+        elif order == 'DESC':
+            queryset = queryset.order_by(f"-{order_by}")  # Sắp xếp theo thứ tự giảm dần
         return queryset
 #--------- LibraryLog-----
 class CheckInView(generics.CreateAPIView):#checked
@@ -380,12 +388,16 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
         student_id = self.request.data.get('student_id', None)
         book_id = self.request.data.get('book_id', None)
         day_remaining = self.request.data.get('day_remaining', None)
-
+        order_by = self.request.data.get('order_by', "")
+        order = self.request.data.get('order', "")
+        if not order_by:
+            order_by = 'student_id'
+        if not order:
+            order = 'ASC'
         if student_id:
             queryset = queryset.filter(student__student_id=student_id)
         if book_id:
             queryset = queryset.filter(book__id=book_id)
-        
         if day_remaining is not None:
             today = timezone.now().date()
             filtered_queryset = []
@@ -395,7 +407,10 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
                 if remain_day >= int(day_remaining):
                   filtered_queryset.append(i)  # Thêm đối tượng vào danh sách nếu thỏa mãn điều kiện
             queryset = filtered_queryset
-           
+        if order == 'ASC':
+            queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
+        elif order == 'DESC':
+            queryset = queryset.order_by(f"-{order_by}")  # Sắp xếp theo thứ tự giảm dần
         return queryset
 class BookTransactionReturnView(generics.UpdateAPIView):#checked
     queryset = BookTransaction.objects.all()
@@ -419,7 +434,6 @@ class BookTransactionReturnView(generics.UpdateAPIView):#checked
         if not transaction.return_date:
             transaction.return_date = timezone.now().date()  # Đặt ngày trả thành ngày hiện tại
             transaction.save()
-
             # Tăng số lượng sách
             book = transaction.book
             book.quantity += 1
