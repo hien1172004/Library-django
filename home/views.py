@@ -327,6 +327,53 @@ class CheckOutView(generics.UpdateAPIView):#checked
             "message": "Check-out successful",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
+class GetStudentInLibraryView(generics.ListAPIView):
+    serializer_class = LibraryLogSerializer
+    pagination_class = CustomPagination
+    permission_classes = [IsAuthenticated]
+    def post(self, request, *args, **kwargs):
+        # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
+        response = self.list(request, *args, **kwargs)
+        paginated_data = response.data
+        # Thêm các thông tin phân trang vào cấu trúc dữ liệu
+        response.data = {
+            "message" : paginated_data['message'],
+            "total_elements": paginated_data['count'],  # Tổng số phần tử
+            "total_pages": paginated_data['total_pages'],  # Tổng số trang
+            "current_page": paginated_data['current_page'],  # Trang hiện tại
+            "results": paginated_data['results'],  # Kết quả cho trang hiện tại
+        }
+        return response
+    def get_queryset(self):
+        check = self.request.data.get("check", "")
+        if not check:
+            check = "False"
+        if check == "False":
+            queryset = LibraryLog.objects.filter(checked_out__isnull=True)
+        elif check == "True":
+            queryset = LibraryLog.objects.all()
+        
+        # Lọc theo mã sinh viên hoặc tên sinh viên nếu có
+        student_id = self.request.data.get("student_id", "")
+        name = self.request.data.get("name", "")
+        order_by = self.request.data.get("order_by", "")
+        order = self.request.data.get("order", "")
+        if not order:
+            order = 'ASC'
+        if not order_by:
+            order_by = 'student__name'
+        queryset = queryset.select_related('student')
+        filters = Q()
+        if student_id:
+            filters |= Q(student__student_id__icontains=student_id)  # Tìm theo mã sinh viên
+        if name:
+            filters |= Q(student__name__icontains=name)  # Tìm theo tên sinh viên
+        queryset = queryset.filter(filters)
+        if order == 'ASC':
+            queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
+        elif order == 'DESC':
+            queryset = queryset.order_by(f"-{order_by}")  # Sắp xếp theo thứ tự giảm 
+        return queryset
 #BookTranscaction
 class BookTransactionAddView(generics.CreateAPIView):#checked
     queryset = BookTransaction.objects.all()

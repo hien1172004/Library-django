@@ -44,6 +44,7 @@ class Student(models.Model):#checked
     updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
 
     def save(self, *args, **kwargs):
+        self.birthday = int(time.time())
         # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
         if not self.created_at:
             self.created_at = int(time.time())

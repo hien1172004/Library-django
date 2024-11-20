@@ -25,6 +25,7 @@ urlpatterns = [
     # --LIBRARY LOG--
     path('lib/check-in', CheckInView.as_view(), name='check_in'),
     path('lib/check-out', CheckOutView.as_view(), name='check_out'),
+    path("lib/inlibrary", GetStudentInLibraryView.as_view(), name = 'student-in-library'),
     # --BOOK TRANSACTION--
     path('trans/add', BookTransactionAddView.as_view(), name='add_book_transaction'),
     path('trans/search', BookTransactionSearchView.as_view(), name='search_book_transactions'),
