@@ -3,8 +3,8 @@ from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 import random, string, time
-def generate_random_string(length=8):
-    random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+def generate_random_string():
+    random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
     return f"student_{random_part}"
 def generate_book_id():
     random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
