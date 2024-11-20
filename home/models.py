@@ -9,7 +9,15 @@ def generate_random_string():
 def generate_book_id():
     random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"book_{random_part}"
-
+def generate_library():
+    random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"lib_{random_part}"
+def generate_trans():
+    random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"trans_{random_part}"
+def generate_category():
+    random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"category_{random_part}"
 class Manager(AbstractUser):
     id = models.AutoField(primary_key=True)
     username = models.CharField(max_length=100, unique=True)
@@ -72,7 +80,7 @@ class Book(models.Model):
         return self.title
 
 class BookTransaction(models.Model):
-    id = models.AutoField(primary_key=True)
+    id = models.CharField(primary_key=True, max_length=10, default=generate_trans, editable=False, unique=True)
     student = models.ForeignKey(Student, to_field='student_id', on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     borrow_date = models.BigIntegerField(editable=False)  # Unix timestamp
@@ -98,7 +106,7 @@ class BookTransaction(models.Model):
         return f"Transaction {self.id} - {self.student.name} - {self.book.title}"
 
 class LibraryLog(models.Model):
-    id = models.AutoField(primary_key=True)
+    id = models.CharField(primary_key=True, max_length=8, default=generate_library, editable=False, unique=True)
     student = models.ForeignKey(Student, to_field='student_id', on_delete=models.CASCADE)
     checked_in = models.BigIntegerField(default=int(time.time()))  # Unix timestamp cho thời gian mượn
     checked_out = models.BigIntegerField(null=True, blank=True)  # Unix timestamp cho thời gian trả sách (có thể null)
@@ -113,7 +121,7 @@ class LibraryLog(models.Model):
         return f"Log {self.id} - {self.student.name}"
 
 class Category(models.Model):
-    id = models.AutoField(primary_key=True)
+    id = models.CharField(primary_key=True, max_length=13, default=generate_category, editable=False, unique=True)
     label = models.CharField(max_length=255, unique=True)
     created_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian tạo
     updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
