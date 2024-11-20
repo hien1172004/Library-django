@@ -413,6 +413,74 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
         elif order == 'DESC':
             queryset = sorted(queryset, key=lambda x: getattr(x, order_by), reverse=True)
         return queryset
+
+class GetExpriedBookView(generics.ListAPIView):#checked
+    serializer_class = BookTransactionSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+    def post(self, request, *args, **kwargs):
+        # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
+        response = self.list(request, *args, **kwargs)
+        paginated_data = response.data
+        
+        # Thêm các thông tin phân trang vào cấu trúc dữ liệu
+        response.data = {
+            'message': paginated_data["message"],
+            "total_elements": paginated_data['count'],  # Tổng số phần tử
+            "total_pages": paginated_data['total_pages'],  # Tổng số trang
+            "current_page": paginated_data['current_page'],  # Trang hiện tại
+            "results": paginated_data['results'],  # Kết quả cho trang hiện tại
+        }
+        
+        return response
+    def get_queryset(self):
+        queryset = BookTransaction.objects.all()
+        queryset = queryset.filter(return_date__isnull=True)
+        student_id = self.request.data.get('student_id', None)
+        book_id = self.request.data.get('book_id', None)
+        order_by = self.request.data.get('order_by', "")
+        if not order_by:
+            order_by = "student_id"
+        order = self.request.data.get('order', "")
+        if not order:
+            order = 'ASC'
+        if student_id:
+            queryset = queryset.filter(student__student_id=student_id)
+        if book_id:
+            queryset = queryset.filter(book__id=book_id)
+        
+        today = timezone.now().date()
+        filtered_queryset = []
+        for i in queryset:
+            borrow_date = datetime.date.fromtimestamp(i.borrow_date)
+            return_date = borrow_date + datetime.timedelta(days=i.days_registered)
+            if return_date < today:
+                filtered_queryset.append(i)  # Thêm đối tượng vào danh sách nếu thỏa mãn điều kiện
+        queryset = filtered_queryset
+        if order == 'ASC':
+            queryset = sorted(queryset, key=lambda x: getattr(x, order_by))
+        elif order == 'DESC':
+            queryset = sorted(queryset, key=lambda x: getattr(x, order_by), reverse=True)
+        return queryset
+class ExpiredBooksCountView(generics.ListAPIView):
+    queryset = BookTransaction.objects.all()
+    def list(self, request, *args, **kwargs):
+        # Lấy danh sách các giao dịch quá hạn
+        today = timezone.now().date()
+        queryset = BookTransaction.objects.filter(
+            return_date__isnull=True,  # Chưa trả sách
+        )
+        expired_count = 0
+
+        for i in queryset:
+            borrow_date = datetime.date.fromtimestamp(i.borrow_date)
+            return_date = borrow_date + datetime.timedelta(days=i.days_registered)
+            if return_date < today:
+                expired_count += 1
+        
+        # Trả về số lượng giao dịch quá hạn
+        return Response({"expired_books_count": expired_count})
+
 class BookTransactionReturnView(generics.UpdateAPIView):#checked
     queryset = BookTransaction.objects.all()
     serializer_class = BookTransactionSerializer
