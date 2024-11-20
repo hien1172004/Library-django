@@ -4,7 +4,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 import random, string, time
 def generate_random_string(length=8):
-    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+    random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+    return f"student_{random_part}"
 def generate_book_id():
     random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
     return f"book_{random_part}"
@@ -104,7 +105,7 @@ class LibraryLog(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.checked_in:
-            self.checked_in = int(time.time())  # Lưu timestamp khi mượn sách
+            self.checked_in = int(time.time()) # Lưu timestamp khi mượn sách
 
         super().save(*args, **kwargs)
 
