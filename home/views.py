@@ -345,12 +345,12 @@ class GetStudentInLibraryView(generics.ListAPIView):
         }
         return response
     def get_queryset(self):
-        check = self.request.data.get("check", "")
+        check = bool(self.request.data.get("check"))
         if not check:
-            check = "False"
-        if check == "False":
+            check = False
+        if check == False:
             queryset = LibraryLog.objects.filter(checked_out__isnull=True)
-        elif check == "True":
+        elif check == True:
             queryset = LibraryLog.objects.all()
         
         # Lọc theo mã sinh viên hoặc tên sinh viên nếu có
