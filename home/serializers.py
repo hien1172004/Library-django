@@ -5,18 +5,18 @@ from .models import LibraryLog, Manager, Student, Book, BookTransaction, Categor
 class ManagerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Manager
-        fields = ['id', 'username', 'password']
-
+        fields = ['id', 'username', 'password', 'created_at', 'updated_at']
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'name', 'student_class', 'birthday', 'student_id']
+        fields = ['id', 'name', 'student_class', 'birthday', 'student_id', 'created_at', 'updated_at']
+       
 
 # Serializer cho Book
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
-        fields = ['id', 'title', 'author', 'category', "cover_image", 'publish_date', 'quantity']
+        fields = ['id', 'title', 'author', 'category', "cover_image", 'publish_date', 'quantity', 'created_at', 'updated_at']
 
 # Serializer cho BookTransaction
 class BookTransactionSerializer(serializers.ModelSerializer):
@@ -25,11 +25,7 @@ class BookTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BookTransaction
-        fields = ['id', 'student', 'book', 'borrow_date', 'days_registered', 'return_date']
-
-    def create(self, validated_data):
-        # Tạo một giao dịch mới
-        return super().create(validated_data)
+        fields = ['id', 'student', 'book', 'borrow_date', 'days_registered', 'return_date', 'created_at', 'updated_at']
 
 # Serializer cho LibraryLog
 class LibraryLogSerializer(serializers.ModelSerializer):
@@ -41,4 +37,4 @@ class LibraryLogSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'label']
+        fields = ['id', 'label', 'created_at', 'updated_at']

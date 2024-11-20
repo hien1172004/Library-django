@@ -11,7 +11,10 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator, EmptyPage, InvalidPage
+from django.db.models import Q
+
 class CustomPagination(PageNumberPagination):
+    
     page_size = 10  # Số lượng mục mỗi trang mặc định
     page_size_query_param = 'page_size'  # Cho phép người dùng chỉ định page_size
     max_page_size = 100  # Số lượng tối đa mục mỗi trang
@@ -98,12 +101,15 @@ class SearchBooksView(generics.ListAPIView):#checked
         if not order:
             order = 'ASC'
         # Áp dụng các bộ lọc nếu có tham số tìm kiếm
-        if title:
-            queryset = queryset.filter(title__icontains=title)  # Tìm theo tiêu đề sách
-        if author:
-            queryset = queryset.filter(author__icontains=author)  # Tìm theo tác giả
-        if category:
-            queryset = queryset.filter(category__icontains=category)  # Tìm theo thể loại sách
+        if title or author or category:
+            filters = Q()
+            if title:
+                filters |= Q(title__icontains=title)  # Tìm theo tiêu đề
+            if author:
+                filters |= Q(author__icontains=author)  # Tìm theo tác giả
+            if category:
+                filters |= Q(category__icontains=category)  # Tìm theo thể loại
+            queryset = queryset.filter(filters)
          # Sắp xếp theo trường `order_by`
         if order == 'ASC':
             queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
@@ -265,10 +271,14 @@ class StudentSearchView(generics.ListAPIView):#checked
             order_by = "name"
         if not order:
             order = 'ASC'
-        if name:
-            queryset = queryset.filter(name__icontains=name) 
-        if student_class:
-            queryset = queryset.filter(student_class__icontains=student_class)  
+        if name or student_class:
+            filters = Q()
+            if name:
+                filters |= Q(name__icontains=name)
+            if student_class:
+                filters |= Q(student_class__icontains=student_class)
+            queryset = queryset.filter(filters)
+
         if order == 'ASC':
             queryset = queryset.order_by(order_by)  # Sắp xếp theo thứ tự tăng dần
         elif order == 'DESC':
@@ -387,18 +397,18 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
         queryset = queryset.filter(return_date__isnull=True)
         student_id = self.request.data.get('student_id', None)
         book_id = self.request.data.get('book_id', None)
-        day_remaining = self.request.data.get('day_remaining', None)
+        day_remaining = self.request.data.get('day_remaining', "")
         order_by = self.request.data.get('order_by', "")
         if not order_by:
             order_by = "student_id"
         order = self.request.data.get('order', "")
-        if not order:
-            order = 'ASC'
+        filters = Q()  
         if student_id:
-            queryset = queryset.filter(student__student_id=student_id)
+            filters |= Q(student__student_id=student_id)  
         if book_id:
-            queryset = queryset.filter(book__id=book_id)
-        if day_remaining is not None:
+            filters |= Q(book__id=book_id)
+        queryset = queryset.filter(filters)
+        if day_remaining:
             today = timezone.now().date()
             filtered_queryset = []
             for i in queryset:
@@ -408,6 +418,8 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
                 if remain_day >= int(day_remaining):
                   filtered_queryset.append(i)  # Thêm đối tượng vào danh sách nếu thỏa mãn điều kiện
             queryset = filtered_queryset
+
+        
         if order == 'ASC':
             queryset = sorted(queryset, key=lambda x: getattr(x, order_by))
         elif order == 'DESC':
@@ -444,10 +456,12 @@ class GetExpriedBookView(generics.ListAPIView):#checked
         order = self.request.data.get('order', "")
         if not order:
             order = 'ASC'
+        filters = Q()  
         if student_id:
-            queryset = queryset.filter(student__student_id=student_id)
+            filters |= Q(student__student_id=student_id)  
         if book_id:
-            queryset = queryset.filter(book__id=book_id)
+            filters |= Q(book__id=book_id)
+        queryset = queryset.filter(filters)
         
         today = timezone.now().date()
         filtered_queryset = []
@@ -518,7 +532,7 @@ class BookTransactionReturnView(generics.UpdateAPIView):#checked
 #------Category-------
 class CategoryAddView(generics.CreateAPIView):#checked
     queryset = Category.objects.all()
-    serializer_class = BookSerializer
+    serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
     def create(self, request, *args, **kwargs):
         serializers =CategorySerializer(data = request.data)
@@ -538,7 +552,7 @@ class CategoryEditview(generics.UpdateAPIView):
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
     def get_object(self):#checked
-        category_id = self.request.data.get("id")
+        category_id = self.request.data.get("category_id")
         if not category_id:
             raise ValidationError({"message": "Category_id is requierd"})
         return get_object_or_404(Category,id = category_id)
