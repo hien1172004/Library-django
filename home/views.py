@@ -95,8 +95,7 @@ class SearchBooksView(generics.ListAPIView):#checked
         order_by = self.request.data.get('order_by', "title")
         order = self.request.data.get('order', "")
         queryset = Book.objects.all()
-        allowed_order_fields = ["title", "author", "category"]
-        if order_by not in allowed_order_fields:
+        if not order_by:
             order_by = "title"  # Mặc định sắp xếp theo title nếu order_by không hợp lệ
         if not order:
             order = 'ASC'
@@ -434,7 +433,7 @@ class GetExpriedBookView(generics.ListAPIView):#checked
         # Lấy dữ liệu phân trang từ `self.list` và xử lý lại
         response = self.list(request, *args, **kwargs)
         paginated_data = response.data
-        
+  
         # Thêm các thông tin phân trang vào cấu trúc dữ liệu
         response.data = {
             'message': paginated_data["message"],
