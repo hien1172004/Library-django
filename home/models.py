@@ -38,7 +38,7 @@ class Student(models.Model):#checked
     id = models.CharField(primary_key=True, max_length=8, default=generate_random_string, editable=False, unique=True)
     name = models.CharField(max_length=255)
     student_class = models.CharField(max_length=50)  # Tránh sử dụng từ khóa Class
-    birthday = models.DateField()
+    birthday = models.BigIntegerField(default=int(time.time()))
     student_id = models.CharField(max_length=128, unique=True)  # Tránh trùng tên lớp
     created_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian tạo
     updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
