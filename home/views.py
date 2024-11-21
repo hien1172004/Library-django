@@ -584,8 +584,8 @@ class LibraryLogCountInDayView(APIView):
         if not count or not isinstance(count, int) or count <= 0:
             return Response({'error': 'Tham số count không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Lấy ngày hiện tại
-        today = timezone.now().date()
+        # Lấy ngày hiện tại (sử dụng timezone.localtime để lấy ngày địa phương)
+        today = timezone.localtime(timezone.now()).date()
 
         # Tính toán ngày bắt đầu (count ngày trước từ hôm nay, bao gồm cả hôm nay)
         start_date = today - datetime.timedelta(days=count - 1)  # Bao gồm ngày hôm nay
