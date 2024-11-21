@@ -38,13 +38,12 @@ class Student(models.Model):#checked
     id = models.CharField(primary_key=True, max_length=12, default=generate_random_string, editable=False, unique=True)
     name = models.CharField(max_length=255)
     student_class = models.CharField(max_length=50)  # Tránh sử dụng từ khóa Class
-    birthday = models.BigIntegerField(default=int(time.time()))
+    birthday = models.BigIntegerField()
     student_id = models.CharField(max_length=128, unique=True)  # Tránh trùng tên lớp
     created_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian tạo
     updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
 
     def save(self, *args, **kwargs):
-        self.birthday = int(time.time())
         # Chuyển đổi thời gian hiện tại thành Unix timestamp trước khi lưu
         if not self.created_at:
             self.created_at = int(time.time())
