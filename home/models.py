@@ -35,7 +35,7 @@ class Manager(AbstractUser):
         return self.username
 
 class Student(models.Model):#checked
-    id = models.CharField(primary_key=True, max_length=8, default=generate_random_string, editable=False, unique=True)
+    id = models.CharField(primary_key=True, max_length=12, default=generate_random_string, editable=False, unique=True)
     name = models.CharField(max_length=255)
     student_class = models.CharField(max_length=50)  # Tránh sử dụng từ khóa Class
     birthday = models.BigIntegerField(default=int(time.time()))
