@@ -71,8 +71,6 @@ class Book(models.Model):
     updated_at = models.BigIntegerField(editable=False)  # Lưu trữ Unix timestamp cho thời gian cập nhật
 
     def save(self, *args, **kwargs):
-     
-        self.publish_date = int(time.time())
         if not self.created_at:
             self.created_at = int(time.time())
         self.updated_at = int(time.time())
@@ -109,7 +107,7 @@ class BookTransaction(models.Model):
 class LibraryLog(models.Model):
     id = models.CharField(primary_key=True, max_length=8, default=generate_library, editable=False, unique=True)
     student = models.ForeignKey(Student, to_field='student_id', on_delete=models.CASCADE)
-    checked_in = models.BigIntegerField(default=int(time.time()))  # Unix timestamp cho thời gian mượn
+    checked_in = models.BigIntegerField()  # Unix timestamp cho thời gian mượn
     checked_out = models.BigIntegerField(null=True, blank=True)  # Unix timestamp cho thời gian trả sách (có thể null)
 
     def save(self, *args, **kwargs):
