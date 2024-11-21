@@ -10,9 +10,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from django.core.paginator import Paginator, EmptyPage, InvalidPage
-from django.db.models import Q, Count, F, ExpressionWrapper
-from django.db.models.functions import TruncDay
+from django.db.models import Q
+
 
 class CustomPagination(PageNumberPagination):
     
@@ -451,9 +450,9 @@ class BookTransactionSearchView(generics.ListAPIView):#checked
         order = self.request.data.get('order', "")
         filters = Q()  
         if student_id:
-            filters |= Q(student__student_id=student_id)  
+            filters |= Q(student__student_id__icontains=student_id)  # Case-insensitive partial match for student_id
         if book_id:
-            filters |= Q(book__id=book_id)
+            filters |= Q(book__id__icontains=book_id)
         queryset = queryset.filter(filters)
         if day_remaining:
             today = timezone.now().date()
