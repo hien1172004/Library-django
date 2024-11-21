@@ -26,12 +26,14 @@ urlpatterns = [
     path('lib/check-in', CheckInView.as_view(), name='check_in'),
     path('lib/check-out', CheckOutView.as_view(), name='check_out'),
     path("lib/inlibrary", GetStudentInLibraryView.as_view(), name = 'student-in-library'),
+    path('lib/countinday', LibraryLogCountInDayView.as_view(), name = 'count_in_day'),
     # --BOOK TRANSACTION--
     path('trans/add', BookTransactionAddView.as_view(), name='add_book_transaction'),
     path('trans/search', BookTransactionSearchView.as_view(), name='search_book_transactions'),
     path('trans/return', BookTransactionReturnView.as_view(), name='update-transaction-status'),
     path('trans/expried', GetExpriedBookView.as_view(), name = 'expried_book'),
     path('trans/count', ExpiredBooksCountView.as_view(), name = 'count_expried'),
+    
     #----CATEGORY
     path('category/add', CategoryAddView.as_view(), name = 'add_category'),
     path('category/edit', CategoryEditview.as_view(), name = 'edit_category'),

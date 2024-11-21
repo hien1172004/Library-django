@@ -1,5 +1,5 @@
 import datetime
-from django.forms import ValidationError
+from django.forms import DateTimeField, ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
@@ -11,7 +11,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator, EmptyPage, InvalidPage
-from django.db.models import Q
+from django.db.models import Q, Count, F, ExpressionWrapper
+from django.db.models.functions import TruncDay
 
 class CustomPagination(PageNumberPagination):
     
@@ -574,8 +575,47 @@ class BookTransactionReturnView(generics.UpdateAPIView):#checked
             }, status=status.HTTP_200_OK)
 
         return Response({'error': 'Transaction is already marked as returned'}, status=status.HTTP_400_BAD_REQUEST)
-    
-#------Category-------
+class LibraryLogCountInDayView(APIView):
+    def post(self, request):
+        # Lấy tham số 'count' từ body
+        count = request.data.get('count')
+
+        # Kiểm tra nếu count không hợp lệ
+        if not count or not isinstance(count, int) or count <= 0:
+            return Response({'error': 'Tham số count không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy ngày hiện tại
+        today = timezone.now().date()
+
+        # Tính toán ngày bắt đầu (count ngày trước từ hôm nay, bao gồm cả hôm nay)
+        start_date = today - datetime.timedelta(days=count - 1)  # Bao gồm ngày hôm nay
+
+        # Danh sách tất cả các ngày từ start_date đến hôm nay
+        all_days = [start_date + datetime.timedelta(days=i) for i in range(count)]
+
+        # Chuẩn bị dữ liệu trả về
+        response_data = []
+
+        # Kiểm tra các ngày và thêm dữ liệu vào response
+        for day in all_days:
+            # Chuyển đổi ngày thành Unix timestamp
+            day_start = int(time.mktime(day.timetuple()))
+            day_end = int(time.mktime((day + datetime.timedelta(days=1)).timetuple()))  # Tính đến cuối ngày
+            
+            # Truy vấn và đếm số lượt check-in trong ngày
+            day_logs = LibraryLog.objects.filter(
+                checked_in__gte=day_start,
+                checked_in__lt=day_end
+            ).count()  # Đếm số lượt check-in trong ngày
+
+            # Thêm vào dữ liệu trả về
+            response_data.append({
+                'timestamp': day_start,  # Chuyển đổi ngày thành Unix timestamp
+                'check_in_count': day_logs,  # Số lượt check-in trong ngày
+                'date': day.strftime('%Y-%m-%d')  # Định dạng lại ngày theo 'YYYY-MM-DD'
+            })
+
+        return Response(response_data, status=status.HTTP_200_OK)
 class CategoryAddView(generics.CreateAPIView):#checked
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
