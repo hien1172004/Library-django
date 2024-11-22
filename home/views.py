@@ -278,7 +278,7 @@ class StudentSearchView(generics.ListAPIView):#checked
             if student_class:
                 filters |= Q(student_class__icontains=student_class)
             if student_id:
-                filters |= Q(stundet_id__icontains=student_id)
+                filters |= Q(student_id__icontains=student_id)
             queryset = queryset.filter(filters)
 
         if order == 'ASC':
