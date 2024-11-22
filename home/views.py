@@ -262,6 +262,7 @@ class StudentSearchView(generics.ListAPIView):#checked
         return response
     def get_queryset(self):
         queryset = Student.objects.all()
+        student_id = self.request.data.get("student_id", "")
         name = self.request.data.get("name", "")
         student_class = self.request.data.get("student_class","")  
         order_by = self.request.data.get("order_by", "")
@@ -270,12 +271,14 @@ class StudentSearchView(generics.ListAPIView):#checked
             order_by = "name"
         if not order:
             order = 'ASC'
-        if name or student_class:
+        if name or student_class or student_id:
             filters = Q()
             if name:
                 filters |= Q(name__icontains=name)
             if student_class:
                 filters |= Q(student_class__icontains=student_class)
+            if student_id:
+                filters |= Q(stundet_id__icontains=student_id)
             queryset = queryset.filter(filters)
 
         if order == 'ASC':
@@ -374,6 +377,47 @@ class GetStudentInLibraryView(generics.ListAPIView):
         elif order == 'DESC':
             queryset = queryset.order_by(f"-{order_by}")  # Sắp xếp theo thứ tự giảm 
         return queryset
+class LibraryLogCountInDayView(APIView):
+    def post(self, request):
+        # Lấy tham số 'count' từ body
+        count = request.data.get('count')
+
+        # Kiểm tra nếu count không hợp lệ
+        if not count or not isinstance(count, int) or count <= 0:
+            return Response({'error': 'Tham số count không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy ngày hiện tại (sử dụng timezone.localtime để lấy ngày địa phương)
+        today = timezone.localtime(timezone.now()).date()
+
+        # Tính toán ngày bắt đầu (count ngày trước từ hôm nay, bao gồm cả hôm nay)
+        start_date = today - datetime.timedelta(days=count - 1)  # Bao gồm ngày hôm nay
+
+        # Danh sách tất cả các ngày từ start_date đến hôm nay
+        all_days = [start_date + datetime.timedelta(days=i) for i in range(count)]
+
+        # Chuẩn bị dữ liệu trả về
+        response_data = []
+
+        # Kiểm tra các ngày và thêm dữ liệu vào response
+        for day in all_days:
+            # Chuyển đổi ngày thành Unix timestamp
+            day_start = int(time.mktime(day.timetuple()))
+            day_end = int(time.mktime((day + datetime.timedelta(days=1)).timetuple()))  # Tính đến cuối ngày
+            
+            # Truy vấn và đếm số lượt check-in trong ngày
+            day_logs = LibraryLog.objects.filter(
+                checked_in__gte=day_start,
+                checked_in__lt=day_end
+            ).count()  # Đếm số lượt check-in trong ngày
+
+            # Thêm vào dữ liệu trả về
+            response_data.append({
+                'timestamp': day_start,  # Chuyển đổi ngày thành Unix timestamp
+                'check_in_count': day_logs,  # Số lượt check-in trong ngày
+                'date': day.strftime('%Y-%m-%d')  # Định dạng lại ngày theo 'YYYY-MM-DD'
+            })
+
+        return Response(response_data, status=status.HTTP_200_OK)
 #BookTranscaction
 class BookTransactionAddView(generics.CreateAPIView):#checked
     queryset = BookTransaction.objects.all()
@@ -574,47 +618,8 @@ class BookTransactionReturnView(generics.UpdateAPIView):#checked
             }, status=status.HTTP_200_OK)
 
         return Response({'error': 'Transaction is already marked as returned'}, status=status.HTTP_400_BAD_REQUEST)
-class LibraryLogCountInDayView(APIView):
-    def post(self, request):
-        # Lấy tham số 'count' từ body
-        count = request.data.get('count')
 
-        # Kiểm tra nếu count không hợp lệ
-        if not count or not isinstance(count, int) or count <= 0:
-            return Response({'error': 'Tham số count không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Lấy ngày hiện tại (sử dụng timezone.localtime để lấy ngày địa phương)
-        today = timezone.localtime(timezone.now()).date()
-
-        # Tính toán ngày bắt đầu (count ngày trước từ hôm nay, bao gồm cả hôm nay)
-        start_date = today - datetime.timedelta(days=count - 1)  # Bao gồm ngày hôm nay
-
-        # Danh sách tất cả các ngày từ start_date đến hôm nay
-        all_days = [start_date + datetime.timedelta(days=i) for i in range(count)]
-
-        # Chuẩn bị dữ liệu trả về
-        response_data = []
-
-        # Kiểm tra các ngày và thêm dữ liệu vào response
-        for day in all_days:
-            # Chuyển đổi ngày thành Unix timestamp
-            day_start = int(time.mktime(day.timetuple()))
-            day_end = int(time.mktime((day + datetime.timedelta(days=1)).timetuple()))  # Tính đến cuối ngày
-            
-            # Truy vấn và đếm số lượt check-in trong ngày
-            day_logs = LibraryLog.objects.filter(
-                checked_in__gte=day_start,
-                checked_in__lt=day_end
-            ).count()  # Đếm số lượt check-in trong ngày
-
-            # Thêm vào dữ liệu trả về
-            response_data.append({
-                'timestamp': day_start,  # Chuyển đổi ngày thành Unix timestamp
-                'check_in_count': day_logs,  # Số lượt check-in trong ngày
-                'date': day.strftime('%Y-%m-%d')  # Định dạng lại ngày theo 'YYYY-MM-DD'
-            })
-
-        return Response(response_data, status=status.HTTP_200_OK)
+#Category-------------------
 class CategoryAddView(generics.CreateAPIView):#checked
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -631,7 +636,6 @@ class CategoryAddView(generics.CreateAPIView):#checked
             "message": 'Failed to add Category',
             'errors' : serializers.errors
         }, status= status.HTTP_400_BAD_REQUEST)
-    
 class CategoryEditview(generics.UpdateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
