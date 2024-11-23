@@ -5,18 +5,39 @@ from .models import LibraryLog, Manager, Student, Book, BookTransaction, Categor
 class ManagerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Manager
-        fields = ['id', 'username', 'password', 'created_at', 'updated_at']
+        fields = ["id", "username", "password", "created_at", "updated_at"]
+
+
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'name', 'student_class', 'birthday', 'student_id', 'created_at', 'updated_at']
-       
+        fields = [
+            "id",
+            "name",
+            "student_class",
+            "birthday",
+            "student_id",
+            "created_at",
+            "updated_at",
+        ]
+
 
 # Serializer cho Book
 class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
-        fields = ['id', 'title', 'author', 'category', "cover_image", 'publish_date', 'quantity', 'created_at', 'updated_at']
+        fields = [
+            "id",
+            "title",
+            "author",
+            "category",
+            "cover_image",
+            "publish_date",
+            "quantity",
+            "created_at",
+            "updated_at",
+        ]
+
 
 # Serializer cho BookTransaction
 class BookTransactionSerializer(serializers.ModelSerializer):
@@ -25,7 +46,17 @@ class BookTransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BookTransaction
-        fields = ['id', 'student', 'book', 'borrow_date', 'days_registered', 'return_date', 'created_at', 'updated_at']
+        fields = [
+            "id",
+            "student",
+            "book",
+            "borrow_date",
+            "days_registered",
+            "return_date",
+            "created_at",
+            "updated_at",
+        ]
+
 
 # Serializer cho LibraryLog
 class LibraryLogSerializer(serializers.ModelSerializer):
@@ -33,8 +64,10 @@ class LibraryLogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LibraryLog
-        fields = ['id', 'student', 'checked_in', 'checked_out']
+        fields = ["id", "student", "checked_in", "checked_out"]
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'label', 'created_at', 'updated_at']
+        fields = ["id", "label", "created_at", "updated_at"]
